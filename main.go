@@ -3,12 +3,17 @@ package main
 import (
     "context"
     "fmt"
+    "encoding/json"
     "log"
+    "net/http"
+    "github.com/gorilla/mux"
 
     "go.mongodb.org/mongo-driver/bson"
     "go.mongodb.org/mongo-driver/mongo"
     "go.mongodb.org/mongo-driver/mongo/options"
 )
+// log used for showing requiest status while using API
+// net/http package will start the server, and gorillamux for the routing
 
 //Trainer type
 type Trainer struct {
@@ -18,7 +23,25 @@ type Trainer struct {
 }
 
 func main() {
-  // Set client options
+  //routing
+  // new router
+  // r is our mux variable
+  r := mux.NewRouter()
+
+  // Route handles & endpoints
+  r.HandleFunc("/trainers", getTrainers).Methods("GET")
+  r.HandleFunc("/trainers/{name}", getTrainer).Methods("GET")
+  r.HandleFunc("/trainers", createTrainer).Methods("POST")
+  r.HandleFunc("/trainers/{name}", updateTrainer).Methods("PUT")
+  r.HandleFunc("/trainers/{name}", deleteTrainer).Methods("DELETE")
+
+  //Starting the server
+  log.Fatal(http.ListenAndServe(":3000", r))
+
+
+/* ||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||| BEGIN MONGODB WORK
+
+// Set client options
   clientOptions := options.Client().ApplyURI("mongodb://localhost:27017")
 
   // Connect to MongoDB
@@ -124,7 +147,7 @@ func main() {
 
   collection.Drop(context.TODO())
   fmt.Println("Connection to MongoDB closed. uwu")
-
+  |||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||| */
 } // MAIN
 
 
