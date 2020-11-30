@@ -5,7 +5,7 @@ import (
     "fmt"
     "log"
 
-    //"go.mongodb.org/mongo-driver/bson"
+    "go.mongodb.org/mongo-driver/bson"
     "go.mongodb.org/mongo-driver/mongo"
     "go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -68,11 +68,52 @@ func main() {
 
   //|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||| UPDATE
 
+  // updating a single document. Filter document used to match doc,
+  // and update doc describes the update operation. Here, using bson.D types
+
+  jeffFilter := bson.D{{"name", "Jeff Winger"}}
+
+  update := bson.D{
+    {"$inc", bson.D{
+      {"age", 1},
+      }},
+  }
+
+  updateResult, err := collection.UpdateOne(context.TODO(), jeffFilter, update)
+  if err != nil {
+    log.Fatal(err)
+  }
+
+  fmt.Printf("Matched %v documents and updated %v documents.\n",
+              updateResult.MatchedCount,
+              updateResult.ModifiedCount)
 
 
+  //|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||| READ
+  // to find one doc, need filter doc
+  // and pointer to value in which the result can be decoded.
 
+  // value into which result will be decoded
+  var result Trainer
 
+  err = collection.FindOne(context.TODO(), jeffFilter).Decode(&result)
+  if err != nil {
+    log.Fatal(err)
+  }
 
+  fmt.Printf("Found a single document %+v\n", result)
+
+  //|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||| DELETE
+
+  //collection.Drop() to delete an entire collection
+
+  //DeleteMany or DeleteOne
+  deleteResult, err := collection.DeleteMany(context.TODO(), jeffFilter)
+  if err != nil {
+    log.Fatal(err)
+  }
+
+  fmt.Printf("Deleted %v documents in the trainers collection.\n", deleteResult)
 
   //closing the connection
   err = client.Disconnect(context.TODO())
@@ -80,9 +121,12 @@ func main() {
   if err != nil {
       log.Fatal(err)
   }
+
+  collection.Drop(context.TODO())
   fmt.Println("Connection to MongoDB closed. uwu")
 
 } // MAIN
+
 
 
 
