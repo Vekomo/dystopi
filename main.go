@@ -39,7 +39,38 @@ func main() {
 
   //can now get a handle for the trainers collection
   // will later use this handle to query the collection
-  //collection := client.Database("test").Collection("trainers")
+  collection := client.Database("test").Collection("trainers")
+
+  //|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||| CREATE
+  //create structs to insert into the DB
+  //NAME(string), AGE(int), CITY(string)
+  jeff := Trainer{"Jeff Winger", 40, "Greendale"}
+  abed := Trainer{"Abed Nadir", 21, "Greendale"}
+  troy := Trainer{"Troy Barnes", 21, "Greendale"}
+
+  //inserting a single document
+  insertResult, err := collection.InsertOne(context.TODO(), jeff)
+  if err != nil {
+    log.Fatal(err)
+  }
+
+  fmt.Println("Inserted a single document: ", insertResult.InsertedID)
+
+  //inserting multiple, InsertMany() will take a slice of objects
+  trainers := []interface{}{abed, troy}
+
+  insertManyResult, err := collection.InsertMany(context.TODO(), trainers)
+  if err != nil {
+    log.Fatal(err)
+  }
+
+  fmt.Println("Inserted multiple documents: ", insertManyResult.InsertedIDs)
+
+  //|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||| UPDATE
+
+
+
+
 
 
 
@@ -51,7 +82,7 @@ func main() {
   }
   fmt.Println("Connection to MongoDB closed. uwu")
 
-}
+} // MAIN
 
 
 
