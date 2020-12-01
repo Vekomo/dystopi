@@ -22,7 +22,102 @@ type Trainer struct {
     City string
 }
 
+// Set client options
+var clientOptions = options.Client().ApplyURI("mongodb://localhost:27017")
+// Connect to MongoDB
+var client, err = mongo.Connect(context.TODO(), clientOptions)
+//can now get a handle for the trainers collection
+// will later use this handle to query the collection
+var collection = client.Database("test").Collection("trainers")
+
+
+// Get all trainers
+func getTrainers(w http.ResponseWriter, r *http.Request) {
+  w.Header().Set("Content-Type", "application/json")
+  findOptions := options.Find()
+  //findOptions.SetLimit(10) // arbitrarily set to 10
+  //storing decoded docs here
+  var results[]*Trainer
+  // bson.D as the filter will match all documents
+  cur, err := collection.Find(context.TODO(), bson.D{{}}, findOptions)
+  if err != nil {
+    log.Fatal(err)
+  }
+  //now need to iterate through cursor to decode docs one at a time
+  for cur.Next(context.TODO()) {
+
+    var elem Trainer // value to decode single doc into
+
+    err := cur.Decode(&elem)
+    if err != nil {
+      log.Println(err)
+    }
+
+    results = append(results, &elem)
+
+  }
+  cur.Close(context.TODO())
+
+  json.NewEncoder(w).Encode(results)
+}
+
+// Get specific trainers
+func getTrainer(w http.ResponseWriter, r *http.Request) {
+  w.Header().Set("Content-Type", "application/json")
+  params := mux.Vars(r) //Get the params
+  filter := bson.D{{"name", params["name"]}}
+
+  var result Trainer
+
+  err = collection.FindOne(context.TODO(), filter).Decode(&result)
+  if err != nil {
+    log.Println(err)
+  }
+
+  json.NewEncoder(w).Encode(&result)
+
+}
+
+// Create trainer
+func createTrainer(w http.ResponseWriter, r *http.Request) {
+  w.Header().Set("Content-Type", "application/json")
+
+  var trainer Trainer
+  _ = json.NewDecoder(r.Body).Decode(&trainer)
+  filter := bson.D{{"name", trainer.Name}}
+  var result Trainer
+
+  findErr := collection.FindOne(context.TODO(), filter).Decode(&result)
+
+  if findErr != nil {
+    if findErr == mongo.ErrNoDocuments {
+      insertResult, err := collection.InsertOne(context.TODO(), trainer)
+      if err != nil {
+        log.Println(err)
+      }
+      log.Println("Inserted a single document: ", insertResult.InsertedID)
+      json.NewEncoder(w).Encode(trainer)
+      return
+    }
+    log.Println(findErr)
+  }
+  log.Println("Trainer name already taken, send PUT to update instead.")
+
+}
+
 func main() {
+  //|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||| CONNECTION TO MONGODB
+
+    //checking the connection
+  err = client.Ping(context.TODO(), nil)
+  if err != nil {
+    log.Fatal(err)
+  }
+  fmt.Println("Connected to MongoDB...")
+  fmt.Println("Dropping collection...")
+  collection.Drop(context.TODO())
+  fmt.Println("Ready for requests...")
+  //|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||| --CONNECTION
   //routing
   // new router
   // r is our mux variable
@@ -32,11 +127,11 @@ func main() {
   r.HandleFunc("/trainers", getTrainers).Methods("GET")
   r.HandleFunc("/trainers/{name}", getTrainer).Methods("GET")
   r.HandleFunc("/trainers", createTrainer).Methods("POST")
-  r.HandleFunc("/trainers/{name}", updateTrainer).Methods("PUT")
-  r.HandleFunc("/trainers/{name}", deleteTrainer).Methods("DELETE")
+  //r.HandleFunc("/trainers/{name}", updateTrainer).Methods("PUT")
+  //r.HandleFunc("/trainers/{name}", deleteTrainer).Methods("DELETE")
 
   //Starting the server
-  log.Fatal(http.ListenAndServe(":3000", r))
+  log.Fatal(http.ListenAndServe(":3001", r))
 
 
 /* ||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||| BEGIN MONGODB WORK
