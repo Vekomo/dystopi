@@ -125,6 +125,35 @@ func deleteTrainer(w http.ResponseWriter, r *http.Request) {
 
 }
 
+//Update trainer
+func updateTrainer(w http.ResponseWriter, r *http.Request) {
+  w.Header().Set("Content-Type", "application/json")
+  params := mux.Vars(r) //Get the params
+  filter := bson.D{{"name", params["name"]}}
+  //Incrementing age as a quick test.
+  update := bson.D{
+    {"$inc", bson.D{
+      {"age", 1},
+      }},
+  }
+
+  updateResult, err := collection.UpdateOne(context.TODO(), filter, update)
+  if err != nil {
+    log.Println(err)
+    return
+  }
+  if updateResult.MatchedCount == 0 {
+    log.Println("Could not match any documents.")
+    return
+  }
+
+  log.Printf("Matched %v documents and updated %v documents.\n",
+              updateResult.MatchedCount,
+              updateResult.ModifiedCount)
+
+
+}
+
 func main() {
   //|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||| CONNECTION TO MONGODB
 
@@ -134,8 +163,8 @@ func main() {
     log.Fatal(err)
   }
   fmt.Println("Connected to MongoDB...")
-  fmt.Println("Dropping collection...")
-  collection.Drop(context.TODO())
+  //fmt.Println("Dropping collection...")
+  //collection.Drop(context.TODO())
   fmt.Println("Ready for requests...")
   //|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||| --CONNECTION
   //routing
@@ -147,7 +176,7 @@ func main() {
   r.HandleFunc("/trainers", getTrainers).Methods("GET")
   r.HandleFunc("/trainers/{name}", getTrainer).Methods("GET")
   r.HandleFunc("/trainers", createTrainer).Methods("POST")
-  //r.HandleFunc("/trainers/{name}", updateTrainer).Methods("PUT")
+  r.HandleFunc("/trainers/{name}", updateTrainer).Methods("PUT")
   r.HandleFunc("/trainers/{name}", deleteTrainer).Methods("DELETE")
 
   //Starting the server
