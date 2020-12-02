@@ -105,6 +105,26 @@ func createTrainer(w http.ResponseWriter, r *http.Request) {
 
 }
 
+//Delete trainer
+func deleteTrainer(w http.ResponseWriter, r *http.Request) {
+  w.Header().Set("Content-Type", "application/json")
+  params := mux.Vars(r) //Get the params
+  filter := bson.D{{"name", params["name"]}}
+
+  result, err := collection.DeleteOne(context.TODO(), filter)
+  if err != nil {
+    log.Println(err)
+    return
+  }
+  if result.DeletedCount == 0 {
+    log.Println("Trainer not found in collection.")
+    return
+  }
+
+  log.Printf("Deleted document with name: %v from the trainers collection.\n", params["name"])
+
+}
+
 func main() {
   //|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||| CONNECTION TO MONGODB
 
@@ -128,10 +148,10 @@ func main() {
   r.HandleFunc("/trainers/{name}", getTrainer).Methods("GET")
   r.HandleFunc("/trainers", createTrainer).Methods("POST")
   //r.HandleFunc("/trainers/{name}", updateTrainer).Methods("PUT")
-  //r.HandleFunc("/trainers/{name}", deleteTrainer).Methods("DELETE")
+  r.HandleFunc("/trainers/{name}", deleteTrainer).Methods("DELETE")
 
   //Starting the server
-  log.Fatal(http.ListenAndServe(":3001", r))
+  log.Fatal(http.ListenAndServe(":3000", r))
 
 
 /* ||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||| BEGIN MONGODB WORK
