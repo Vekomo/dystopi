@@ -15,29 +15,31 @@ import (
 // log used for showing requiest status while using API
 // net/http package will start the server, and gorillamux for the routing
 
-//Trainer type
-type Trainer struct {
-    Name string
-    Age  int
-    City string
+//User type for collection
+type User struct {
+    Username string
+    Password  string
+    Rating float64
+    Influence float64
+    Judgements slice
 }
 
 // Set client options
 var clientOptions = options.Client().ApplyURI("mongodb://localhost:27017")
 // Connect to MongoDB
 var client, err = mongo.Connect(context.TODO(), clientOptions)
-//can now get a handle for the trainers collection
+//can now get a handle for the Users collection
 // will later use this handle to query the collection
-var collection = client.Database("test").Collection("trainers")
+var collection = client.Database("dystopi").Collection("users")
 
 
-//|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||| Get all trainers
-func getTrainers(w http.ResponseWriter, r *http.Request) {
+//|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||| Get all users
+func getUsers(w http.ResponseWriter, r *http.Request) {
   w.Header().Set("Content-Type", "application/json")
   findOptions := options.Find()
   //findOptions.SetLimit(10) // arbitrarily set to 10
   //storing decoded docs here
-  var results[]*Trainer
+  var results[]*User
   // bson.D as the filter will match all documents
   cur, err := collection.Find(context.TODO(), bson.D{{}}, findOptions)
   if err != nil {
@@ -46,7 +48,7 @@ func getTrainers(w http.ResponseWriter, r *http.Request) {
   //now need to iterate through cursor to decode docs one at a time
   for cur.Next(context.TODO()) {
 
-    var elem Trainer // value to decode single doc into
+    var elem User // value to decode single doc into
 
     err := cur.Decode(&elem)
     if err != nil {
@@ -61,13 +63,13 @@ func getTrainers(w http.ResponseWriter, r *http.Request) {
   json.NewEncoder(w).Encode(results)
 }
 
-//|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||| Get single trainers
-func getTrainer(w http.ResponseWriter, r *http.Request) {
+//|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||| Get single Users
+func getUser(w http.ResponseWriter, r *http.Request) {
   w.Header().Set("Content-Type", "application/json")
   params := mux.Vars(r) //Get the params
   filter := bson.D{{"name", params["name"]}}
 
-  var result Trainer
+  var result User
 
   err = collection.FindOne(context.TODO(), filter).Decode(&result)
   if err != nil {
@@ -78,35 +80,35 @@ func getTrainer(w http.ResponseWriter, r *http.Request) {
 
 }
 
-//|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||| Create trainer
-func createTrainer(w http.ResponseWriter, r *http.Request) {
+//|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||| Create User
+func createUser(w http.ResponseWriter, r *http.Request) {
   w.Header().Set("Content-Type", "application/json")
 
-  var trainer Trainer
-  _ = json.NewDecoder(r.Body).Decode(&trainer)
-  filter := bson.D{{"name", trainer.Name}}
-  var result Trainer
+  var user User
+  _ = json.NewDecoder(r.Body).Decode(&user)
+  filter := bson.D{{"name", user.Name}}
+  var result User
 
   findErr := collection.FindOne(context.TODO(), filter).Decode(&result)
 
   if findErr != nil {
     if findErr == mongo.ErrNoDocuments {
-      insertResult, err := collection.InsertOne(context.TODO(), trainer)
+      insertResult, err := collection.InsertOne(context.TODO(), user)
       if err != nil {
         log.Println(err)
       }
       log.Println("Inserted a single document: ", insertResult.InsertedID)
-      json.NewEncoder(w).Encode(trainer)
+      json.NewEncoder(w).Encode(user)
       return
     }
     log.Println(findErr)
   }
-  log.Println("Trainer name already taken, send PUT to update instead.")
+  log.Println("Username already taken, send PUT to update instead.")
 
 }
 
-//|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||| Delete trainer
-func deleteTrainer(w http.ResponseWriter, r *http.Request) {
+//|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||| Delete User
+func deleteUser(w http.ResponseWriter, r *http.Request) {
   w.Header().Set("Content-Type", "application/json")
   params := mux.Vars(r) //Get the params
   filter := bson.D{{"name", params["name"]}}
@@ -117,16 +119,16 @@ func deleteTrainer(w http.ResponseWriter, r *http.Request) {
     return
   }
   if result.DeletedCount == 0 {
-    log.Println("Trainer not found in collection.")
+    log.Println("User not found in collection.")
     return
   }
 
-  log.Printf("Deleted user: %v from the trainers collection.\n", params["name"])
+  log.Printf("Deleted user: %v from the Users collection.\n", params["name"])
 
 }
 
-//|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||| Update trainer
-func updateTrainer(w http.ResponseWriter, r *http.Request) {
+//|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||| Update User
+func updateUser(w http.ResponseWriter, r *http.Request) {
   w.Header().Set("Content-Type", "application/json")
   params := mux.Vars(r) //Get the params
   filter := bson.D{{"name", params["name"]}}
@@ -171,11 +173,11 @@ func main() {
   r := mux.NewRouter()
 
   // Route handles & endpoints
-  r.HandleFunc("/trainers", getTrainers).Methods("GET")
-  r.HandleFunc("/trainers/{name}", getTrainer).Methods("GET")
-  r.HandleFunc("/trainers", createTrainer).Methods("POST")
-  r.HandleFunc("/trainers/{name}", updateTrainer).Methods("PUT")
-  r.HandleFunc("/trainers/{name}", deleteTrainer).Methods("DELETE")
+  r.HandleFunc("/users", getUsers).Methods("GET")
+  r.HandleFunc("/users/{name}", getUser).Methods("GET")
+  r.HandleFunc("/users", createUser).Methods("POST")
+  r.HandleFunc("/users/{name}", updateUser).Methods("PUT")
+  r.HandleFunc("/users/{name}", deleteUser).Methods("DELETE")
 
   //Starting the server
   log.Fatal(http.ListenAndServe(":3000", r))
