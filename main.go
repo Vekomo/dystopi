@@ -23,6 +23,12 @@ type User struct {
     Influence  float64
     Judgements []string
 }
+// Fields struct for when a judgement occurs
+type JudgementFields struct {
+  Judge string
+  Target string
+  RatingGiven float64
+}
 
 // Set client options
 var clientOptions = options.Client().ApplyURI("mongodb://localhost:27017")
@@ -130,9 +136,23 @@ func deleteUser(w http.ResponseWriter, r *http.Request) {
 //|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||| Update User
 func updateUser(w http.ResponseWriter, r *http.Request) {
   w.Header().Set("Content-Type", "application/json")
-  params := mux.Vars(r) //Get the params
-  filter := bson.D{{"username", params["username"]}}
-  //Incrementing influence as a quick test.
+  var fields JudgementFields
+   _ = json.NewDecoder(r.Body).Decode(&fields)
+  //judgeFilter := bson.D{{"username", fields.Judge}}
+  //targetFilter := bson.D{{"username", fields.Target}}
+  ratingGiven := fields.RatingGiven
+  log.Println("Judge: " + fields.Judge)
+  log.Println("Target: " + fields.Target)
+  log.Println("Rating given: " ,ratingGiven)
+
+  return
+  //Using judges username, get influence and
+  //Add targets username to judges judgements if found. If not exit operation.
+  //
+  //Apply that influence an
+
+  /** Incrementing influence as a quick test.
+
   update := bson.D{
     {"$inc", bson.D{
       {"influence", 1},
@@ -152,6 +172,8 @@ func updateUser(w http.ResponseWriter, r *http.Request) {
   log.Printf("Matched %v documents and updated %v documents.\n",
               updateResult.MatchedCount,
               updateResult.ModifiedCount)
+
+  **/
 
 }
 
@@ -176,7 +198,7 @@ func main() {
   r.HandleFunc("/users", getUsers).Methods("GET")
   r.HandleFunc("/users/{username}", getUser).Methods("GET")
   r.HandleFunc("/users", createUser).Methods("POST")
-  r.HandleFunc("/users/{username}", updateUser).Methods("PUT")
+  r.HandleFunc("/users", updateUser).Methods("PUT")
   r.HandleFunc("/users/{username}", deleteUser).Methods("DELETE")
 
   //Starting the server
