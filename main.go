@@ -17,11 +17,11 @@ import (
 
 //User type for collection
 type User struct {
-    Username string
-    Password  string
-    Rating float64
-    Influence float64
-    Judgements slice
+    Username   string
+    Password   string
+    Rating     float64
+    Influence  float64
+    Judgements []string
 }
 
 // Set client options
@@ -67,7 +67,7 @@ func getUsers(w http.ResponseWriter, r *http.Request) {
 func getUser(w http.ResponseWriter, r *http.Request) {
   w.Header().Set("Content-Type", "application/json")
   params := mux.Vars(r) //Get the params
-  filter := bson.D{{"name", params["name"]}}
+  filter := bson.D{{"username", params["username"]}}
 
   var result User
 
@@ -86,7 +86,7 @@ func createUser(w http.ResponseWriter, r *http.Request) {
 
   var user User
   _ = json.NewDecoder(r.Body).Decode(&user)
-  filter := bson.D{{"name", user.Name}}
+  filter := bson.D{{"username", user.Username}}
   var result User
 
   findErr := collection.FindOne(context.TODO(), filter).Decode(&result)
@@ -111,7 +111,7 @@ func createUser(w http.ResponseWriter, r *http.Request) {
 func deleteUser(w http.ResponseWriter, r *http.Request) {
   w.Header().Set("Content-Type", "application/json")
   params := mux.Vars(r) //Get the params
-  filter := bson.D{{"name", params["name"]}}
+  filter := bson.D{{"username", params["username"]}}
 
   result, err := collection.DeleteOne(context.TODO(), filter)
   if err != nil {
@@ -123,7 +123,7 @@ func deleteUser(w http.ResponseWriter, r *http.Request) {
     return
   }
 
-  log.Printf("Deleted user: %v from the Users collection.\n", params["name"])
+  log.Printf("Deleted user: %v from the Users collection.\n", params["username"])
 
 }
 
@@ -131,11 +131,11 @@ func deleteUser(w http.ResponseWriter, r *http.Request) {
 func updateUser(w http.ResponseWriter, r *http.Request) {
   w.Header().Set("Content-Type", "application/json")
   params := mux.Vars(r) //Get the params
-  filter := bson.D{{"name", params["name"]}}
-  //Incrementing age as a quick test.
+  filter := bson.D{{"username", params["username"]}}
+  //Incrementing influence as a quick test.
   update := bson.D{
     {"$inc", bson.D{
-      {"age", 1},
+      {"influence", 1},
       }},
   }
 
@@ -174,10 +174,10 @@ func main() {
 
   // Route handles & endpoints
   r.HandleFunc("/users", getUsers).Methods("GET")
-  r.HandleFunc("/users/{name}", getUser).Methods("GET")
+  r.HandleFunc("/users/{username}", getUser).Methods("GET")
   r.HandleFunc("/users", createUser).Methods("POST")
-  r.HandleFunc("/users/{name}", updateUser).Methods("PUT")
-  r.HandleFunc("/users/{name}", deleteUser).Methods("DELETE")
+  r.HandleFunc("/users/{username}", updateUser).Methods("PUT")
+  r.HandleFunc("/users/{username}", deleteUser).Methods("DELETE")
 
   //Starting the server
   log.Fatal(http.ListenAndServe(":3000", r))
