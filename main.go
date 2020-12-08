@@ -20,13 +20,16 @@ type User struct {
     Username   string
     Password   string
     Rating     float64
-    Influence  float64
-    Judgements []string
+    Influence  int
+    Judgements map[string]int
+    Score      map[string]int
+    RatedBy    int
+
 }
 // Fields struct for when a judgement occurs
 type JudgementFields struct {
-  Judge string
-  Target string
+  Judge       string
+  Target      string
   RatingGiven float64
 }
 
@@ -93,6 +96,7 @@ func createUser(w http.ResponseWriter, r *http.Request) {
   var user User
   _ = json.NewDecoder(r.Body).Decode(&user)
   filter := bson.D{{"username", user.Username}}
+  log.Println(user)
   var result User
 
   findErr := collection.FindOne(context.TODO(), filter).Decode(&result)
@@ -185,8 +189,8 @@ func main() {
     log.Fatal(err)
   }
   fmt.Println("Connected to MongoDB...")
-  //fmt.Println("Dropping collection...")
-  //collection.Drop(context.TODO())
+  fmt.Println("Dropping collection...")
+  collection.Drop(context.TODO())
   fmt.Println("Ready for requests...")
   //|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||| --CONNECTION
   //routing
