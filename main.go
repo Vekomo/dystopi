@@ -3,6 +3,7 @@ package main
 import (
     "context"
     "fmt"
+    "os"
     "encoding/json"
     "log"
     "net/http"
@@ -96,7 +97,6 @@ func createUser(w http.ResponseWriter, r *http.Request) {
   var user User
   _ = json.NewDecoder(r.Body).Decode(&user)
   filter := bson.D{{"username", user.Username}}
-  log.Println(user)
   var result User
 
   findErr := collection.FindOne(context.TODO(), filter).Decode(&result)
@@ -188,9 +188,14 @@ func main() {
   if err != nil {
     log.Fatal(err)
   }
+  //add command line for option to drop collection on run.
   fmt.Println("Connected to MongoDB...")
-  fmt.Println("Dropping collection...")
-  collection.Drop(context.TODO())
+  // if length requirement not there, no need to check if drop, if it is make sure
+  // it is actually drop and not a type.
+  if(len(os.Args) > 1 && os.Args[1] == "drop") {
+    fmt.Println("Dropping collection...")
+    collection.Drop(context.TODO())
+  }
   fmt.Println("Ready for requests...")
   //|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||| --CONNECTION
   //routing
