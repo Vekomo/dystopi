@@ -31,7 +31,7 @@ type User struct {
 type JudgementFields struct {
   Judge       string
   Target      string
-  RatingGiven float64
+  RatingGiven int
 }
 
 // Set client options
@@ -142,12 +142,58 @@ func updateUser(w http.ResponseWriter, r *http.Request) {
   w.Header().Set("Content-Type", "application/json")
   var fields JudgementFields
    _ = json.NewDecoder(r.Body).Decode(&fields)
-  //judgeFilter := bson.D{{"username", fields.Judge}}
-  //targetFilter := bson.D{{"username", fields.Target}}
-  ratingGiven := fields.RatingGiven
+  judgeFilter := bson.D{{"username", fields.Judge}}
+  targetFilter := bson.D{{"username", fields.Target}}
   log.Println("Judge: " + fields.Judge)
   log.Println("Target: " + fields.Target)
-  log.Println("Rating given: " ,ratingGiven)
+  log.Println("Rating given: ", fields.RatingGiven)
+  //find and get doc for both judge and target
+  var judgeDoc User
+  var targetDoc User
+  //finding judge document
+  err = collection.FindOne(context.TODO(), judgeFilter).Decode(&judgeDoc)
+  if err != nil {
+    log.Println(err)
+    log.Println("Could not find judge user.")
+    return
+  }
+  //finding target user document
+  err = collection.FindOne(context.TODO(), targetFilter).Decode(&targetDoc)
+  if err != nil {
+    log.Println(err)
+    log.Println("Could not find target user.")
+    return
+  }
+
+  log.Println("Printing judge and target...")
+  log.Println(judgeDoc)
+  log.Println(targetDoc)
+
+  // 1. Add targets user name and rating given to judges map
+  // 2. Use judges influence to add to targets score map
+  // 3. Re-calculate targets rating
+  // 4. Increment targets rated by count
+  // 5. Re-calculate targets influence
+  // **. First make sure target is not already in Judgers map
+
+  //Adding target to judges judgements map
+  _, ok := judgeDoc.Judgements[fields.Target]
+  if ok == true {
+    log.Println("Judge has already rated: ", fields.Target)
+    return
+  }
+  judgeDoc.Judgements[fields.Target] = fields.RatingGiven
+  trackUpdate := bson.D {
+    {"$set", bson.D{
+      {"Judgements", judgeDoc.Judgements},
+      }},
+  }
+  updateResult, err := collection.UpdateOne(context.TODO(), judgeFilter, trackUpdate)
+  if err != nil {
+    log.Println(err)
+    log.Println("Coult not match/update judges judgements map.")
+    return
+  }
 
   return
   //Using judges username, get influence and
@@ -183,7 +229,7 @@ func updateUser(w http.ResponseWriter, r *http.Request) {
 
 func main() {
   //|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||| CONNECTION TO MONGODB
-    //checking the connection
+  //checking the connection
   err = client.Ping(context.TODO(), nil)
   if err != nil {
     log.Fatal(err)
