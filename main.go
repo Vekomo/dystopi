@@ -2,6 +2,7 @@ package main
 
 import (
     "context"
+    "strconv"
     "fmt"
     "os"
     "encoding/json"
@@ -172,8 +173,8 @@ func updateUser(w http.ResponseWriter, r *http.Request) {
   // 1. Add targets user name and rating given to judges map
   // 2. Use judges influence to add to targets score map
   // 3. Re-calculate targets rating
-  // 4. Increment targets rated by count
-  // 5. Re-calculate targets influence
+  // 4. Re-calculate targets influence
+  // 5. Increment targets rated by count
   // **. First make sure target is not already in Judgers map
 
   //Adding target to judges judgements map
@@ -191,39 +192,26 @@ func updateUser(w http.ResponseWriter, r *http.Request) {
   updateResult, err := collection.UpdateOne(context.TODO(), judgeFilter, trackUpdate)
   if err != nil {
     log.Println(err)
-    log.Println("Coult not match/update judges judgements map.")
+    log.Println("Could not match/update judges judgements map.")
     return
   }
+  // Using judges influence update targets score map
 
-  return
-  //Using judges username, get influence and
-  //Add targets username to judges judgements if found. If not exit operation.
-  //
-  //Apply that influence an
-
-  /** Incrementing influence as a quick test.
-
-  update := bson.D{
-    {"$inc", bson.D{
-      {"influence", 1},
+  targetDoc.Score[strconv.Itoa(fields.RatingGiven)] += judgeDoc.Influence
+  scoreUpdate := bson.D {
+    {"$set", bson.D{
+      {"Score", targetDoc.Score},
       }},
   }
-
-  updateResult, err := collection.UpdateOne(context.TODO(), filter, update)
+  updateResult, err = collection.UpdateOne(context.TODO(), targetFilter, scoreUpdate)
   if err != nil {
     log.Println(err)
+    log.Println("Could not match/update targets score map.")
     return
   }
-  if updateResult.MatchedCount == 0 {
-    log.Println("Could not match any documents.")
-    return
-  }
+  log.Println(updateResult)
+  return
 
-  log.Printf("Matched %v documents and updated %v documents.\n",
-              updateResult.MatchedCount,
-              updateResult.ModifiedCount)
-
-  **/
 
 }
 
