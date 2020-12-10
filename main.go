@@ -5,6 +5,7 @@ import (
     "strconv"
     "fmt"
     "os"
+    "math"
     "encoding/json"
     "log"
     "net/http"
@@ -145,9 +146,6 @@ func updateUser(w http.ResponseWriter, r *http.Request) {
    _ = json.NewDecoder(r.Body).Decode(&fields)
   judgeFilter := bson.D{{"username", fields.Judge}}
   targetFilter := bson.D{{"username", fields.Target}}
-  log.Println("Judge: " + fields.Judge)
-  log.Println("Target: " + fields.Target)
-  log.Println("Rating given: ", fields.RatingGiven)
   //find and get doc for both judge and target
   var judgeDoc User
   var targetDoc User
@@ -166,16 +164,13 @@ func updateUser(w http.ResponseWriter, r *http.Request) {
     return
   }
 
-  log.Println("Printing judge and target...")
-  log.Println(judgeDoc)
-  log.Println(targetDoc)
-
+  // **. First make sure target is not already in Judgers map
   // 1. Add targets user name and rating given to judges map
   // 2. Use judges influence to add to targets score map
   // 3. Re-calculate targets rating
   // 4. Re-calculate targets influence
   // 5. Increment targets rated by count
-  // **. First make sure target is not already in Judgers map
+
 
   //Adding target to judges judgements map
   _, ok := judgeDoc.Judgements[fields.Target]
@@ -189,7 +184,7 @@ func updateUser(w http.ResponseWriter, r *http.Request) {
       {"Judgements", judgeDoc.Judgements},
       }},
   }
-  updateResult, err := collection.UpdateOne(context.TODO(), judgeFilter, trackUpdate)
+  _, err := collection.UpdateOne(context.TODO(), judgeFilter, trackUpdate)
   if err != nil {
     log.Println(err)
     log.Println("Could not match/update judges judgements map.")
@@ -203,16 +198,66 @@ func updateUser(w http.ResponseWriter, r *http.Request) {
       {"Score", targetDoc.Score},
       }},
   }
-  updateResult, err = collection.UpdateOne(context.TODO(), targetFilter, scoreUpdate)
+  _, err = collection.UpdateOne(context.TODO(), targetFilter, scoreUpdate)
   if err != nil {
     log.Println(err)
     log.Println("Could not match/update targets score map.")
     return
   }
-  log.Println(updateResult)
-  return
 
-
+  //Calculating new influence/rating/and new rated by count
+  ratingNume := 0
+  totalWeight := 0
+  for key, weight := range targetDoc.Score {
+    scoreInt, _ := strconv.Atoi(key)
+    ratingNume += scoreInt * weight
+    totalWeight += weight
+  }
+  newRating := ratingNume/totalWeight
+  newRatedBy := targetDoc.RatedBy + 1    //Find out which form is best
+  newInfluence := int(math.Pow(float64(newRating), 2))
+  newInfluence = int(newInfluence * (newRatedBy/150))
+  // Threshold to get through until over a 1, get rated by a lot of people!
+  if newInfluence < 1 {
+    newInfluence = 1
+  }
+  // Updating rating
+  ratingUpdate := bson.D {
+    {"$set", bson.D{
+      {"Rating", newRating},
+      }},
+  }
+  _, err = collection.UpdateOne(context.TODO(), targetFilter, ratingUpdate)
+  if err != nil {
+    log.Println(err)
+    log.Println("Could not update rating.")
+    return
+  }
+  // Updating rated by count
+  ratedByUpdate := bson.D {
+    {"$set", bson.D{
+      {"RatedBy", newRatedBy},
+      }},
+  }
+  _, err = collection.UpdateOne(context.TODO(), targetFilter, ratedByUpdate)
+  if err != nil {
+    log.Println(err)
+    log.Println("Could not update target rating count, ratedBy.")
+    return
+  }
+  // Updating influence
+  influenceUpdate := bson.D {
+    {"$set", bson.D{
+      {"Influence", newInfluence},
+      }},
+  }
+  _, err = collection.UpdateOne(context.TODO(), targetFilter, influenceUpdate)
+  if err != nil {
+    log.Println(err)
+    log.Println("Could not update target influence.")
+    return
+  }
+  log.Println("Completed updating target/judger documents...")
 }
 
 func main() {
