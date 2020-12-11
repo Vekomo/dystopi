@@ -40,7 +40,7 @@ type JudgementFields struct {
 var clientOptions = options.Client().ApplyURI("mongodb://localhost:27017")
 // Connect to MongoDB
 var client, err = mongo.Connect(context.TODO(), clientOptions)
-//can now get a handle for the Users collection
+// can now get a handle for the Users collection
 // will later use this handle to query the collection
 var collection = client.Database("dystopi").Collection("users")
 
@@ -171,8 +171,7 @@ func updateUser(w http.ResponseWriter, r *http.Request) {
   // 4. Re-calculate targets influence
   // 5. Increment targets rated by count
 
-
-  //Adding target to judges judgements map
+  // Adding target to judges judgements map
   _, ok := judgeDoc.Judgements[fields.Target]
   if ok == true {
     log.Println("Judge has already rated: ", fields.Target)
