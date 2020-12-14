@@ -56,22 +56,23 @@ func getUsers(w http.ResponseWriter, r *http.Request) {
   cur, err := collection.Find(context.TODO(), bson.D{{}}, findOptions)
   if err != nil {
     log.Fatal(err)
+    w.WriteHeader(http.StatusNotFound)
+    return
   }
   //now need to iterate through cursor to decode docs one at a time
   for cur.Next(context.TODO()) {
-
     var elem User // value to decode single doc into
-
     err := cur.Decode(&elem)
     if err != nil {
       log.Println(err)
+      w.WriteHeader(http.StatusInternalServerError)
+      return
     }
 
     results = append(results, &elem)
 
   }
   cur.Close(context.TODO())
-
   json.NewEncoder(w).Encode(results)
 }
 
@@ -86,6 +87,8 @@ func getUser(w http.ResponseWriter, r *http.Request) {
   err = collection.FindOne(context.TODO(), filter).Decode(&result)
   if err != nil {
     log.Println(err)
+    w.WriteHeader(http.StatusNotFound)
+    return
   }
 
   json.NewEncoder(w).Encode(&result)
@@ -108,6 +111,8 @@ func createUser(w http.ResponseWriter, r *http.Request) {
       insertResult, err := collection.InsertOne(context.TODO(), user)
       if err != nil {
         log.Println(err)
+        w.WriteHeader(http.StatusNotFound)
+        return
       }
       log.Println("Inserted a single document: ", insertResult.InsertedID)
       json.NewEncoder(w).Encode(user)
@@ -132,6 +137,7 @@ func deleteUser(w http.ResponseWriter, r *http.Request) {
   }
   if result.DeletedCount == 0 {
     log.Println("User not found in collection.")
+    w.WriteHeader(http.StatusNotFound)
     return
   }
 
@@ -146,6 +152,12 @@ func updateUser(w http.ResponseWriter, r *http.Request) {
    _ = json.NewDecoder(r.Body).Decode(&fields)
   judgeFilter := bson.D{{"username", fields.Judge}}
   targetFilter := bson.D{{"username", fields.Target}}
+  if(fields.Judge == fields.Target) {
+    log.Println("Users cannot rate themselves!")
+    w.WriteHeader(http.StatusPreconditionFailed)
+    return
+
+  }
   //find and get doc for both judge and target
   var judgeDoc User
   var targetDoc User
@@ -154,6 +166,7 @@ func updateUser(w http.ResponseWriter, r *http.Request) {
   if err != nil {
     log.Println(err)
     log.Println("Could not find judge user.")
+    w.WriteHeader(http.StatusNotFound)
     return
   }
   //finding target user document
@@ -161,6 +174,7 @@ func updateUser(w http.ResponseWriter, r *http.Request) {
   if err != nil {
     log.Println(err)
     log.Println("Could not find target user.")
+    w.WriteHeader(http.StatusNotFound)
     return
   }
 
@@ -187,6 +201,7 @@ func updateUser(w http.ResponseWriter, r *http.Request) {
   if err != nil {
     log.Println(err)
     log.Println("Could not match/update judges judgements map.")
+    w.WriteHeader(http.StatusInternalServerError)
     return
   }
   // Using judges influence update targets score map
@@ -201,6 +216,7 @@ func updateUser(w http.ResponseWriter, r *http.Request) {
   if err != nil {
     log.Println(err)
     log.Println("Could not match/update targets score map.")
+    w.WriteHeader(http.StatusInternalServerError)
     return
   }
 
@@ -230,6 +246,7 @@ func updateUser(w http.ResponseWriter, r *http.Request) {
   if err != nil {
     log.Println(err)
     log.Println("Could not update rating.")
+    w.WriteHeader(http.StatusInternalServerError)
     return
   }
   // Updating rated by count
@@ -242,6 +259,7 @@ func updateUser(w http.ResponseWriter, r *http.Request) {
   if err != nil {
     log.Println(err)
     log.Println("Could not update target rating count, ratedBy.")
+    w.WriteHeader(http.StatusInternalServerError)
     return
   }
   // Updating influence
@@ -254,6 +272,7 @@ func updateUser(w http.ResponseWriter, r *http.Request) {
   if err != nil {
     log.Println(err)
     log.Println("Could not update target influence.")
+    w.WriteHeader(http.StatusInternalServerError)
     return
   }
   log.Println("Completed updating target/judger documents...")
