@@ -105,9 +105,34 @@ func createUser(w http.ResponseWriter, r *http.Request) {
   var result User
 
   findErr := collection.FindOne(context.TODO(), filter).Decode(&result)
-
+  // Set up bad input checks for username
   if findErr != nil {
     if findErr == mongo.ErrNoDocuments {
+      /**
+      Setting up default values following struct fields...
+      Rating     float64
+      Influence  int
+      Judgements map[string]int
+      Score      map[string]int
+      RatedBy    int
+      **/
+      user.Rating = 0.0
+      user.Influence = 0
+      user.Judgements = bson.d {}
+      user.Score = bson.d {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "4": 0,
+        "5": 0,
+        "6": 0,
+        "7": 0,
+        "8": 0,
+        "9": 0,
+        "10": 0
+      }
+      user.RatedBy = 0
+
       insertResult, err := collection.InsertOne(context.TODO(), user)
       if err != nil {
         log.Println(err)
